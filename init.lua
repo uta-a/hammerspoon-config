@@ -1,4 +1,11 @@
 local gap = 10
+local browserApps = {
+  Safari = true,
+  ["Google Chrome"] = true,
+  Arc = true,
+  ["Brave Browser"] = true,
+  ["Microsoft Edge"] = true,
+}
 
 -- ウィンドウが画面外にはみ出さないよう補正する（四隅gapを確保）
 local function clampToScreen(f, screen)
@@ -11,6 +18,12 @@ local function clampToScreen(f, screen)
   if f.x + f.w > screen.x + screen.w - gap then f.x = screen.x + screen.w - gap - f.w end
   if f.y + f.h > screen.y + screen.h - gap then f.y = screen.y + screen.h - gap - f.h end
   return f
+end
+
+local function frontmostAppIsBrowser()
+  local app = hs.application.frontmostApplication()
+  if not app then return false end
+  return browserApps[app:name()] == true
 end
 
 -- option + enter: 各辺10pxギャップ付きフル表示
@@ -82,6 +95,23 @@ local moveKeys = {
 
 for _, m in ipairs(moveKeys) do
   local fn = function()
+    if m.key == "i" and frontmostAppIsBrowser() then
+      hs.eventtap.keyStroke({"cmd", "shift"}, "t", 0)
+      return
+    end
+    if m.key == "j" and frontmostAppIsBrowser() then
+      hs.eventtap.keyStroke({"ctrl", "shift"}, "tab", 0)
+      return
+    end
+    if m.key == "k" and frontmostAppIsBrowser() then
+      hs.eventtap.keyStroke({"cmd"}, "w", 0)
+      return
+    end
+    if m.key == "l" and frontmostAppIsBrowser() then
+      hs.eventtap.keyStroke({"ctrl"}, "tab", 0)
+      return
+    end
+
     local win = hs.window.focusedWindow()
     if not win then return end
     local f = win:frame()
