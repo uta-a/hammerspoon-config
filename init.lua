@@ -29,6 +29,7 @@ end
 -- option + enter: 各辺10pxギャップ付きフル表示
 hs.hotkey.bind({"alt"}, "f", function()
   local win = hs.window.focusedWindow()
+  if not win then return end
   local screen = win:screen():frame()
   win:setFrame({
     x = screen.x + gap,
@@ -41,6 +42,7 @@ end)
 -- option + c: 中央配置（サイズはそのまま）
 hs.hotkey.bind({"alt"}, "c", function()
   local win = hs.window.focusedWindow()
+  if not win then return end
   local f = win:frame()
   local screen = win:screen():frame()
   f.x = screen.x + (screen.w - f.w) / 2
@@ -51,6 +53,7 @@ end)
 -- option + v: 1200x800にリサイズ
 hs.hotkey.bind({"alt"}, "v", function()
   local win = hs.window.focusedWindow()
+  if not win then return end
   local f = win:frame()
   local screen = win:screen():frame()
   f.w = 1200
@@ -61,6 +64,7 @@ end)
 -- option + b: 小サイズ (800x600) にリサイズして中央配置
 hs.hotkey.bind({"alt"}, "b", function()
   local win = hs.window.focusedWindow()
+  if not win then return end
   local screen = win:screen():frame()
   local w, h = 950, 550
   win:setFrame(clampToScreen({
@@ -74,6 +78,7 @@ end)
 -- option + n: スマホサイズ (402x874, iPhone 17 Pro相当) にリサイズして中央配置
 hs.hotkey.bind({"alt"}, "n", function()
   local win = hs.window.focusedWindow()
+  if not win then return end
   local screen = win:screen():frame()
   local w, h = 402, 750
   win:setFrame(clampToScreen({
