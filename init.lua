@@ -20,76 +20,73 @@ local function clampToScreen(f, screen)
   return f
 end
 
+-- focusedWindow と screen の nil ガードをまとめて行うヘルパー
+local function withFocusedWindow(fn)
+  return function()
+    local win = hs.window.focusedWindow()
+    if not win then return end
+    local scr = win:screen()
+    if not scr then return end
+    fn(win, scr:frame())
+  end
+end
+
 local function frontmostAppIsBrowser()
   local app = hs.application.frontmostApplication()
   if not app then return false end
   return browserApps[app:name()] == true
 end
 
--- option + enter: 各辺10pxギャップ付きフル表示
-hs.hotkey.bind({"alt"}, "f", function()
-  local win = hs.window.focusedWindow()
-  if not win then return end
-  local screen = win:screen():frame()
+-- alt + f: 各辺10pxギャップ付きフル表示
+hs.hotkey.bind({"alt"}, "f", withFocusedWindow(function(win, frame)
   win:setFrame({
-    x = screen.x + gap,
-    y = screen.y + gap,
-    w = screen.w - gap * 2,
-    h = screen.h - gap * 2,
+    x = frame.x + gap,
+    y = frame.y + gap,
+    w = frame.w - gap * 2,
+    h = frame.h - gap * 2,
   })
-end)
+end))
 
--- option + c: 中央配置（サイズはそのまま）
-hs.hotkey.bind({"alt"}, "c", function()
-  local win = hs.window.focusedWindow()
-  if not win then return end
+-- alt + c: 中央配置（サイズはそのまま）
+hs.hotkey.bind({"alt"}, "c", withFocusedWindow(function(win, frame)
   local f = win:frame()
-  local screen = win:screen():frame()
-  f.x = screen.x + (screen.w - f.w) / 2
-  f.y = screen.y + (screen.h - f.h) / 2
-  win:setFrame(clampToScreen(f, screen))
-end)
+  f.x = frame.x + math.floor((frame.w - f.w) / 2)
+  f.y = frame.y + math.floor((frame.h - f.h) / 2)
+  win:setFrame(clampToScreen(f, frame))
+end))
 
--- option + v: 1200x800にリサイズ
-hs.hotkey.bind({"alt"}, "v", function()
-  local win = hs.window.focusedWindow()
-  if not win then return end
+-- alt + v: 1200x800にリサイズ
+hs.hotkey.bind({"alt"}, "v", withFocusedWindow(function(win, frame)
   local f = win:frame()
-  local screen = win:screen():frame()
   f.w = 1200
   f.h = 800
-  win:setFrame(clampToScreen(f, screen))
-end)
+  win:setFrame(clampToScreen(f, frame))
+end))
 
--- option + b: 小サイズ (800x600) にリサイズして中央配置
-hs.hotkey.bind({"alt"}, "b", function()
-  local win = hs.window.focusedWindow()
-  if not win then return end
-  local screen = win:screen():frame()
+-- alt + b: 950x550にリサイズして中央配置
+hs.hotkey.bind({"alt"}, "b", withFocusedWindow(function(win, frame)
   local w, h = 950, 550
   win:setFrame(clampToScreen({
-    x = screen.x + (screen.w - w) / 2,
-    y = screen.y + (screen.h - h) / 2,
+    x = frame.x + math.floor((frame.w - w) / 2),
+    y = frame.y + math.floor((frame.h - h) / 2),
     w = w,
     h = h,
-  }, screen))
-end)
+  }, frame))
+end))
 
--- option + n: スマホサイズ (402x874, iPhone 17 Pro相当) にリサイズして中央配置
-hs.hotkey.bind({"alt"}, "n", function()
-  local win = hs.window.focusedWindow()
-  if not win then return end
-  local screen = win:screen():frame()
+-- alt + n: スマホサイズ (402x750, iPhone相当) にリサイズして中央配置
+hs.hotkey.bind({"alt"}, "n", withFocusedWindow(function(win, frame)
   local w, h = 402, 750
   win:setFrame(clampToScreen({
-    x = screen.x + (screen.w - w) / 2,
-    y = screen.y + (screen.h - h) / 2,
+    x = frame.x + math.floor((frame.w - w) / 2),
+    y = frame.y + math.floor((frame.h - h) / 2),
     w = w,
     h = h,
-  }, screen))
-end)
+  }, frame))
+end))
 
--- option + i/j/k/l: ウィンドウ移動（長押し対応）
+-- alt + i/j/k/l: ウィンドウ移動（長押し対応）
+-- ブラウザ前面時はタブ操作にオーバーライド（ワンショットのみ、長押しで連打しない）
 local moveStep = 30
 local moveKeys = {
   { key = "i", dx =  0, dy = -1 },  -- 上
@@ -98,34 +95,40 @@ local moveKeys = {
   { key = "l", dx =  1, dy =  0 },  -- 右
 }
 
-for _, m in ipairs(moveKeys) do
-  local fn = function()
-    if m.key == "i" and frontmostAppIsBrowser() then
-      hs.eventtap.keyStroke({"cmd", "shift"}, "t", 0)
-      return
-    end
-    if m.key == "j" and frontmostAppIsBrowser() then
-      hs.eventtap.keyStroke({"ctrl", "shift"}, "tab", 0)
-      return
-    end
-    if m.key == "k" and frontmostAppIsBrowser() then
-      hs.eventtap.keyStroke({"cmd"}, "w", 0)
-      return
-    end
-    if m.key == "l" and frontmostAppIsBrowser() then
-      hs.eventtap.keyStroke({"ctrl"}, "tab", 0)
-      return
-    end
+local browserActions = {
+  i = function() hs.eventtap.keyStroke({"cmd", "shift"}, "t", 0) end,
+  j = function() hs.eventtap.keyStroke({"ctrl", "shift"}, "tab", 0) end,
+  k = function() hs.eventtap.keyStroke({"cmd"}, "w", 0) end,
+  l = function() hs.eventtap.keyStroke({"ctrl"}, "tab", 0) end,
+}
 
+for _, m in ipairs(moveKeys) do
+  local moveFn = function()
     local win = hs.window.focusedWindow()
     if not win then return end
+    local scr = win:screen()
+    if not scr then return end
     local f = win:frame()
-    local screen = win:screen():frame()
+    local frame = scr:frame()
     f.x = f.x + m.dx * moveStep
     f.y = f.y + m.dy * moveStep
-    win:setFrame(clampToScreen(f, screen))
+    win:setFrame(clampToScreen(f, frame))
   end
-  hs.hotkey.bind({"alt"}, m.key, fn, nil, fn)
+
+  local pressed = function()
+    if frontmostAppIsBrowser() then
+      browserActions[m.key]()  -- ワンショット：長押しでも1回だけ発火
+    else
+      moveFn()
+    end
+  end
+
+  local repeated = function()
+    if frontmostAppIsBrowser() then return end  -- ブラウザ時はリピート無効
+    moveFn()
+  end
+
+  hs.hotkey.bind({"alt"}, m.key, pressed, nil, repeated)
 end
 
 -- =============================================
@@ -135,13 +138,18 @@ end
 -- =============================================
 do
     local setledsPath = os.getenv("HOME") .. "/.hammerspoon/bin/setleds"
+    local pendingTasks = {}  -- GC防止のためにタスク参照を保持
 
     local function updateCapsLED()
-        local src = hs.keycodes.currentSourceID()
-        if string.find(src, "Japanese") then
-            hs.task.new(setledsPath, nil, {"+caps"}):start()
-        else
-            hs.task.new(setledsPath, nil, {"-caps"}):start()
+        local src = hs.keycodes.currentSourceID() or ""
+        local arg = string.find(src, "Japanese") and "+caps" or "-caps"
+        local task
+        task = hs.task.new(setledsPath, function()
+            pendingTasks[task] = nil
+        end, {arg})
+        if task then
+            pendingTasks[task] = true
+            task:start()
         end
     end
 
