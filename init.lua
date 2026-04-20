@@ -139,10 +139,13 @@ end
 do
     local setledsPath = os.getenv("HOME") .. "/.hammerspoon/bin/setleds"
     local pendingTasks = {}  -- GC防止のためにタスク参照を保持
+    local lastArg = nil  -- 前回と同じなら setleds を再実行しない
 
     local function updateCapsLED()
         local src = hs.keycodes.currentSourceID() or ""
         local arg = string.find(src, "Japanese") and "+caps" or "-caps"
+        if arg == lastArg then return end
+        lastArg = arg
         local task
         task = hs.task.new(setledsPath, function()
             pendingTasks[task] = nil
@@ -153,6 +156,16 @@ do
         end
     end
 
+    -- 入力ソース変更イベント
     hs.keycodes.inputSourceChanged(updateCapsLED)
+
+    -- アプリ切替時にも LED を同期（アプリごとに入力ソースが異なる場合の対策）
+    local appWatcher = hs.application.watcher.new(function(_, event)
+        if event == hs.application.watcher.activated then
+            hs.timer.doAfter(0.1, updateCapsLED)
+        end
+    end)
+    appWatcher:start()
+
     updateCapsLED()
 end
